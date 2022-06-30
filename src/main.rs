@@ -58,8 +58,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     application.connect_activate(build_ui);
     application.run();
 
-    println!("Hello, world! {:?}", conf());
-
     let mut file = File::create(path + "/" + file)?;
     file.write_all(&serde_json::to_vec(conf().lock()?.deref())?)?;
 
