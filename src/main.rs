@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
 use std::ops::Deref;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use std::{env, fs};
 
@@ -105,13 +105,11 @@ fn build_ui(application: &Application) {
 }
 
 fn set_rate(rate: u32) {
+    let rates = vec![rate];
     conf().lock().unwrap().properties.rate = rate;
-    conf().lock().unwrap().properties.allowed_rates = vec![rate];
+    conf().lock().unwrap().properties.allowed_rates = rates.clone();
     //TODO: replace with native implementation
-    pw_metadata(
-        "clock.allowed-rates",
-        "[".to_owned() + &rate.to_string() + "]",
-    );
+    pw_metadata("clock.allowed-rates", serde_json::to_string(&rates).unwrap());
     pw_metadata("clock.rate", rate.to_string());
     pw_metadata("clock.force-rate", rate.to_string());
     pw_metadata("-d", "clock.force-rate");
@@ -119,6 +117,8 @@ fn set_rate(rate: u32) {
 
 fn pw_metadata<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
     let _ = Command::new("pw-metadata")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
         .arg("-n")
         .arg("settings")
         .arg("0")
