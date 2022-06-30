@@ -109,7 +109,10 @@ fn set_rate(rate: u32) {
     conf().lock().unwrap().properties.rate = rate;
     conf().lock().unwrap().properties.allowed_rates = rates.clone();
     //TODO: replace with native implementation
-    pw_metadata("clock.allowed-rates", serde_json::to_string(&rates).unwrap());
+    pw_metadata(
+        "clock.allowed-rates",
+        serde_json::to_string(&rates).unwrap(),
+    );
     pw_metadata("clock.rate", rate.to_string());
     pw_metadata("clock.force-rate", rate.to_string());
     pw_metadata("-d", "clock.force-rate");
