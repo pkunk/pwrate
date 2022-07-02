@@ -8,9 +8,12 @@ use std::{env, fs};
 
 use gtk::glib::clone;
 use gtk::prelude::*;
-use gtk::{Align, Application, ApplicationWindow, ComboBoxText};
+use gtk::{Align, Application, ApplicationWindow, Button, ComboBoxText};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
+
+static FILE: &str = "/pwrate.conf";
+static PATH: OnceCell<String> = OnceCell::new();
 
 #[derive(Serialize, Deserialize, Debug)]
 struct PwContextProperties {
@@ -46,10 +49,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(xdg) => xdg + path,
         Err(_e) => env::var("HOME")? + "/.config" + path,
     };
-    let file = "pwrate.conf";
-    fs::create_dir_all(&path)?;
+    PATH.set(path)?;
 
-    if let Ok(s) = fs::read_to_string(path.to_owned() + "/" + file) {
+    if let Ok(s) = fs::read_to_string(PATH.get().unwrap().to_owned() + FILE) {
         *conf().lock()? = serde_json::from_str(&s)?;
     }
 
@@ -57,9 +59,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let application = Application::new(Some("com.github.pkunk.pwrate"), Default::default());
     application.connect_activate(build_ui);
     application.run();
-
-    let mut file = File::create(path + "/" + file)?;
-    file.write_all(&serde_json::to_vec(conf().lock()?.deref())?)?;
 
     Ok(())
 }
@@ -72,7 +71,18 @@ fn build_ui(application: &Application) {
         .default_height(70)
         .build();
 
-    let combobox = ComboBoxText::builder()
+    let container = gtk::Box::builder()
+        .orientation(gtk::Orientation::Horizontal)
+        .margin_top(10)
+        .margin_bottom(10)
+        .margin_start(10)
+        .margin_end(10)
+        .halign(Align::Center)
+        .valign(Align::Center)
+        .spacing(10)
+        .build();
+
+    let cmb_rate = ComboBoxText::builder()
         .margin_top(10)
         .margin_bottom(10)
         .margin_start(10)
@@ -81,15 +91,15 @@ fn build_ui(application: &Application) {
         .valign(Align::Center)
         .build();
 
-    combobox.append(Some("44100"), "44100");
-    combobox.append(Some("48000"), "48000");
-    combobox.append(Some("88200"), "88200");
-    combobox.append(Some("96000"), "96000");
-    combobox.append(Some("192000"), "192000");
+    cmb_rate.append(Some("44100"), "44100");
+    cmb_rate.append(Some("48000"), "48000");
+    cmb_rate.append(Some("88200"), "88200");
+    cmb_rate.append(Some("96000"), "96000");
+    cmb_rate.append(Some("192000"), "192000");
 
-    combobox.set_active_id(Some(&conf().lock().unwrap().properties.rate.to_string()));
+    cmb_rate.set_active_id(Some(&conf().lock().unwrap().properties.rate.to_string()));
 
-    combobox.connect_changed(clone!(@weak combobox => move |c| {
+    cmb_rate.connect_changed(clone!(@weak cmb_rate => move |c| {
         if let Some(rate) = c.active_text() {
             if let Ok(rate) = rate.to_string().parse::<u32>() {
                 set_rate(rate);
@@ -97,7 +107,27 @@ fn build_ui(application: &Application) {
         }
     }));
 
-    window.set_child(Some(&combobox));
+    container.append(&cmb_rate);
+
+    let btn_save = Button::builder()
+        .label("Save Config")
+        .margin_top(10)
+        .margin_bottom(10)
+        .margin_start(10)
+        .margin_end(10)
+        .halign(Align::Center)
+        .valign(Align::Center)
+        .build();
+
+    btn_save.connect_clicked(|_| {
+        save_config().unwrap_or_else(|e| {
+            eprintln!("Failed to save config: {}", e);
+        });
+    });
+
+    container.append(&btn_save);
+
+    window.set_child(Some(&container));
 
     window.show();
 }
@@ -126,4 +156,13 @@ fn pw_metadata<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
         .arg(key)
         .arg(value)
         .spawn();
+}
+
+fn save_config() -> Result<(), Box<dyn std::error::Error>> {
+    let path = PATH.get().expect("save path should be already set");
+    fs::create_dir_all(path)?;
+
+    let mut file = File::create(path.to_owned() + FILE)?;
+    file.write_all(&serde_json::to_vec(conf().lock()?.deref())?)?;
+    Ok(())
 }
