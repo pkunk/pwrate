@@ -1,10 +1,12 @@
+mod pw;
+
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
 use std::ops::Deref;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
-use std::{env, fs};
+use std::{env, fs, thread};
 
 use gtk::glib::clone;
 use gtk::prelude::*;
@@ -44,6 +46,7 @@ fn conf() -> &'static Mutex<PwConfig> {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    thread::spawn(|| pw::test_pw());
     let path = "/pipewire/pipewire.conf.d";
     let path = match env::var("XDG_CONFIG_HOME") {
         Ok(xdg) => xdg + path,
