@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
@@ -21,14 +21,14 @@ struct PwContextProperties {
     #[serde(rename = "default.clock.rate")]
     rate: u32,
     #[serde(rename = "default.clock.allowed-rates")]
-    allowed_rates: HashSet<u32>,
+    allowed_rates: BTreeSet<u32>,
 }
 
 impl Default for PwContextProperties {
     fn default() -> Self {
         Self {
             rate: 48000,
-            allowed_rates: HashSet::from_iter(vec![48000].into_iter()),
+            allowed_rates: BTreeSet::from_iter(vec![48000].into_iter()),
         }
     }
 }
