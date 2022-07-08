@@ -4,6 +4,7 @@
 Cargo.toml text
 Cargo.lock text
 LICENSE text
+PKGBUILD text
 
 *.md text
 *.rs text
