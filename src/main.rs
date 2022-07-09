@@ -14,6 +14,8 @@ use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
 static FILE: &str = "/pwrate.conf";
+static SERVER_PATH: &str = "/pipewire.conf.d";
+static PULSE_PATH: &str = "/pipewire-pulse.conf.d";
 static PATH: OnceCell<String> = OnceCell::new();
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -39,21 +41,55 @@ struct PwConfig {
     properties: PwContextProperties,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct PwClientStreamProperties {
+    #[serde(rename = "channelmix.mix-lfe")]
+    mix_lfe: bool,
+    #[serde(rename = "channelmix.upmix")]
+    upmix: bool,
+    #[serde(rename = "channelmix.upmix-method")]
+    upmix_method: String,
+}
+
+impl Default for PwClientStreamProperties {
+    fn default() -> Self {
+        Self {
+            mix_lfe: false,
+            upmix: true,
+            upmix_method: "psd".to_owned(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+struct PwClientConfig {
+    #[serde(rename = "stream.properties")]
+    properties: PwClientStreamProperties,
+}
+
 fn conf() -> &'static Mutex<PwConfig> {
     static INSTANCE: OnceCell<Mutex<PwConfig>> = OnceCell::new();
     INSTANCE.get_or_init(|| Mutex::new(Default::default()))
 }
+fn client_conf() -> &'static Mutex<PwClientConfig> {
+    static INSTANCE: OnceCell<Mutex<PwClientConfig>> = OnceCell::new();
+    INSTANCE.get_or_init(|| Mutex::new(Default::default()))
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let path = "/pipewire/pipewire.conf.d";
+    let path = "/pipewire";
     let path = match env::var("XDG_CONFIG_HOME") {
         Ok(xdg) => xdg + path,
         Err(_e) => env::var("HOME")? + "/.config" + path,
     };
     PATH.set(path)?;
 
-    if let Ok(s) = fs::read_to_string(PATH.get().unwrap().to_owned() + FILE) {
+    if let Ok(s) = fs::read_to_string(PATH.get().unwrap().to_owned() + SERVER_PATH + FILE) {
         *conf().lock()? = serde_json::from_str(&s)?;
+    }
+
+    if let Ok(s) = fs::read_to_string(PATH.get().unwrap().to_owned() + PULSE_PATH + FILE) {
+        *client_conf().lock()? = serde_json::from_str(&s)?;
     }
 
     gtk::init()?;
@@ -79,7 +115,7 @@ fn build_ui(application: &Application) {
         .margin_bottom(10)
         .build();
 
-    let container_rate = gtk::Box::builder()
+    let cnt_rate = gtk::Box::builder()
         .orientation(gtk::Orientation::Horizontal)
         .margin_top(10)
         .margin_bottom(10)
@@ -92,7 +128,7 @@ fn build_ui(application: &Application) {
 
     let lbl_rate = Label::builder().label("Default rate:").build();
 
-    container_rate.append(&lbl_rate);
+    cnt_rate.append(&lbl_rate);
 
     let cmb_rate = ComboBoxText::builder()
         .margin_top(10)
@@ -120,7 +156,7 @@ fn build_ui(application: &Application) {
         }
     }));
 
-    container_rate.append(&cmb_rate);
+    cnt_rate.append(&cmb_rate);
 
     let btn_save = Button::builder()
         .label("Save Config")
@@ -138,17 +174,23 @@ fn build_ui(application: &Application) {
         });
     });
 
-    container_rate.append(&btn_save);
+    cnt_rate.append(&btn_save);
 
-    container.append(&container_rate);
+    container.append(&cnt_rate);
 
-    let lbl_rates = Label::builder().label("Allowed rates:").build();
+    let lbl_rates = Label::builder()
+        .label("Allowed rates")
+        .margin_top(10)
+        .margin_bottom(20)
+        .margin_start(40)
+        .halign(Align::Start)
+        .build();
     let rates = &conf().lock().unwrap().properties.allowed_rates;
 
     let chb_44100 = CheckButton::builder()
         .label("  44100")
         .active(rates.contains(&44100))
-        .margin_start(10)
+        .margin_start(20)
         .build();
     chb_44100.connect_toggled(clone!(@weak chb_44100 => move |c| {
         {
@@ -165,7 +207,7 @@ fn build_ui(application: &Application) {
     let chb_48000 = CheckButton::builder()
         .label("  48000")
         .active(rates.contains(&48000))
-        .margin_start(10)
+        .margin_start(20)
         .build();
     chb_48000.connect_toggled(clone!(@weak chb_48000 => move |c| {
         {
@@ -182,7 +224,7 @@ fn build_ui(application: &Application) {
     let chb_88200 = CheckButton::builder()
         .label("  88200")
         .active(rates.contains(&88200))
-        .margin_start(10)
+        .margin_start(20)
         .build();
     chb_88200.connect_toggled(clone!(@weak chb_88200 => move |c| {
         {
@@ -199,7 +241,7 @@ fn build_ui(application: &Application) {
     let chb_96000 = CheckButton::builder()
         .label("  96000")
         .active(rates.contains(&96000))
-        .margin_start(10)
+        .margin_start(20)
         .build();
     chb_96000.connect_toggled(clone!(@weak chb_96000 => move |c| {
         {
@@ -216,7 +258,7 @@ fn build_ui(application: &Application) {
     let chb_192000 = CheckButton::builder()
         .label(" 192000")
         .active(rates.contains(&192000))
-        .margin_start(10)
+        .margin_start(20)
         .build();
     chb_192000.connect_toggled(clone!(@weak chb_192000 => move |c| {
         {
@@ -236,6 +278,106 @@ fn build_ui(application: &Application) {
     container.append(&chb_88200);
     container.append(&chb_96000);
     container.append(&chb_192000);
+
+    let lbl_mix = Label::builder()
+        .label("Surround")
+        .margin_top(30)
+        .margin_start(40)
+        .halign(Align::Start)
+        .build();
+    container.append(&lbl_mix);
+
+    let cnt_mix = gtk::Box::builder()
+        .orientation(gtk::Orientation::Horizontal)
+        .margin_top(10)
+        .margin_bottom(10)
+        .margin_start(10)
+        .margin_end(10)
+        .halign(Align::Start)
+        .valign(Align::Center)
+        .spacing(10)
+        .build();
+
+    let client_properties = &client_conf().lock().unwrap().properties;
+
+    let chb_mix_none = CheckButton::builder()
+        .label("None")
+        .active(client_properties.upmix_method == "none")
+        .margin_start(10)
+        .build();
+
+    let chb_mix_simple = CheckButton::builder()
+        .label("Simple")
+        .active(client_properties.upmix_method == "simple")
+        .margin_start(10)
+        .build();
+
+    let chb_mix_psd = CheckButton::builder()
+        .label("PSD")
+        .active(client_properties.upmix_method == "psd")
+        .margin_start(10)
+        .build();
+
+    chb_mix_none.set_group(Some(&chb_mix_none));
+    chb_mix_simple.set_group(Some(&chb_mix_none));
+    chb_mix_psd.set_group(Some(&chb_mix_none));
+
+    chb_mix_none.connect_toggled(clone!(@weak chb_mix_none => move |c| {
+        if c.is_active() {
+            {
+                let client_properties = &mut client_conf().lock().unwrap().properties;
+                client_properties.upmix_method = "none".to_owned();
+                client_properties.upmix = false;
+            }
+            let _ = save_client_config();
+            restart_pulse();
+        }
+    }));
+
+    chb_mix_simple.connect_toggled(clone!(@weak chb_mix_none => move |c| {
+        if c.is_active() {
+            {
+                let client_properties = &mut client_conf().lock().unwrap().properties;
+                client_properties.upmix_method = "simple".to_owned();
+                client_properties.upmix = true;
+            }
+            let _ = save_client_config();
+            restart_pulse();
+        }
+    }));
+
+    chb_mix_psd.connect_toggled(clone!(@weak chb_mix_none => move |c| {
+        if c.is_active() {
+            {
+                let client_properties = &mut client_conf().lock().unwrap().properties;
+                client_properties.upmix_method = "psd".to_owned();
+                client_properties.upmix = true;
+            }
+            let _ = save_client_config();
+            restart_pulse();
+        }
+    }));
+
+    cnt_mix.append(&chb_mix_none);
+    cnt_mix.append(&chb_mix_simple);
+    cnt_mix.append(&chb_mix_psd);
+
+    container.append(&cnt_mix);
+
+    let chb_mix_lfe = CheckButton::builder()
+        .label("  Mix LFE")
+        .active(client_properties.mix_lfe)
+        .margin_start(20)
+        .build();
+    chb_mix_lfe.connect_toggled(clone!(@weak chb_mix_lfe => move |c| {
+        {
+            client_conf().lock().unwrap().properties.mix_lfe = c.is_active();
+        }
+        let _ = save_client_config();
+        restart_pulse();
+    }));
+
+    container.append(&chb_mix_lfe);
 
     window.set_child(Some(&container));
 
@@ -269,9 +411,37 @@ fn pw_metadata<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 
 fn save_config() -> Result<(), Box<dyn std::error::Error>> {
     let path = PATH.get().expect("save path should be already set");
-    fs::create_dir_all(path)?;
+    fs::create_dir_all(path.to_owned() + SERVER_PATH)?;
 
-    let mut file = File::create(path.to_owned() + FILE)?;
+    let mut file = File::create(path.to_owned() + SERVER_PATH + FILE)?;
     file.write_all(&serde_json::to_vec(conf().lock()?.deref())?)?;
     Ok(())
+}
+
+fn save_client_config() -> Result<(), Box<dyn std::error::Error>> {
+    let path = PATH.get().expect("save path should be already set");
+    fs::create_dir_all(path.to_owned() + PULSE_PATH)?;
+
+    let mut file = File::create(path.to_owned() + PULSE_PATH + FILE)?;
+    file.write_all(&serde_json::to_vec(client_conf().lock()?.deref())?)?;
+
+    fs::create_dir_all(path.to_owned() + "/client.conf.d")?;
+    let mut file = File::create(path.to_owned() + "/client.conf.d" + FILE)?;
+    file.write_all(&serde_json::to_vec(client_conf().lock()?.deref())?)?;
+
+    fs::create_dir_all(path.to_owned() + "/client-rt.conf.d")?;
+    let mut file = File::create(path.to_owned() + "/client-rt.conf.d" + FILE)?;
+    file.write_all(&serde_json::to_vec(client_conf().lock()?.deref())?)?;
+
+    Ok(())
+}
+
+fn restart_pulse() {
+    let _ = Command::new("systemctl")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .arg("--user")
+        .arg("reload-or-restart")
+        .arg("pipewire-pulse.service")
+        .status();
 }
