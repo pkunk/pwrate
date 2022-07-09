@@ -264,7 +264,7 @@ fn pw_metadata<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
         .arg("0")
         .arg(key)
         .arg(value)
-        .spawn();
+        .status();
 }
 
 fn save_config() -> Result<(), Box<dyn std::error::Error>> {
