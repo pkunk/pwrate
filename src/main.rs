@@ -441,7 +441,7 @@ fn restart_pulse() {
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .arg("--user")
-        .arg("reload-or-restart")
+        .arg("try-reload-or-restart")
         .arg("pipewire-pulse.service")
         .status();
 }
