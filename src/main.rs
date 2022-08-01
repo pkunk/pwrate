@@ -414,7 +414,7 @@ fn save_config() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(path.to_owned() + SERVER_PATH)?;
 
     let mut file = File::create(path.to_owned() + SERVER_PATH + FILE)?;
-    file.write_all(&serde_json::to_vec(conf().lock()?.deref())?)?;
+    file.write_all(&serde_json::to_vec_pretty(conf().lock()?.deref())?)?;
     Ok(())
 }
 
@@ -423,15 +423,15 @@ fn save_client_config() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(path.to_owned() + PULSE_PATH)?;
 
     let mut file = File::create(path.to_owned() + PULSE_PATH + FILE)?;
-    file.write_all(&serde_json::to_vec(client_conf().lock()?.deref())?)?;
+    file.write_all(&serde_json::to_vec_pretty(client_conf().lock()?.deref())?)?;
 
     fs::create_dir_all(path.to_owned() + "/client.conf.d")?;
     let mut file = File::create(path.to_owned() + "/client.conf.d" + FILE)?;
-    file.write_all(&serde_json::to_vec(client_conf().lock()?.deref())?)?;
+    file.write_all(&serde_json::to_vec_pretty(client_conf().lock()?.deref())?)?;
 
     fs::create_dir_all(path.to_owned() + "/client-rt.conf.d")?;
     let mut file = File::create(path.to_owned() + "/client-rt.conf.d" + FILE)?;
-    file.write_all(&serde_json::to_vec(client_conf().lock()?.deref())?)?;
+    file.write_all(&serde_json::to_vec_pretty(client_conf().lock()?.deref())?)?;
 
     Ok(())
 }
