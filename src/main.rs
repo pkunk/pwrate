@@ -18,6 +18,9 @@ static SERVER_PATH: &str = "/pipewire.conf.d";
 static PULSE_PATH: &str = "/pipewire-pulse.conf.d";
 static PATH: OnceCell<String> = OnceCell::new();
 
+const DEFAULT_RATE: u32 = 48000;
+static RATES: &[u32] = &[44100, 48000, 88200, 96000, 192000];
+
 #[derive(Serialize, Deserialize, Debug)]
 struct PwContextProperties {
     #[serde(rename = "default.clock.rate")]
@@ -29,8 +32,8 @@ struct PwContextProperties {
 impl Default for PwContextProperties {
     fn default() -> Self {
         Self {
-            rate: 48000,
-            allowed_rates: BTreeSet::from_iter(vec![48000].into_iter()),
+            rate: DEFAULT_RATE,
+            allowed_rates: BTreeSet::from_iter(vec![DEFAULT_RATE].into_iter()),
         }
     }
 }
@@ -139,11 +142,9 @@ fn build_ui(application: &Application) {
         .valign(Align::Center)
         .build();
 
-    cmb_rate.append(Some("44100"), "44100");
-    cmb_rate.append(Some("48000"), "48000");
-    cmb_rate.append(Some("88200"), "88200");
-    cmb_rate.append(Some("96000"), "96000");
-    cmb_rate.append(Some("192000"), "192000");
+    for rate in RATES {
+        cmb_rate.append(Some(&rate.to_string()), &rate.to_string());
+    }
 
     cmb_rate.set_active_id(Some(&conf().lock().unwrap().properties.rate.to_string()));
 
@@ -187,97 +188,32 @@ fn build_ui(application: &Application) {
         .build();
     let rates = &conf().lock().unwrap().properties.allowed_rates;
 
-    let chb_44100 = CheckButton::builder()
-        .label("  44100")
-        .active(rates.contains(&44100))
-        .margin_start(20)
-        .build();
-    chb_44100.connect_toggled(clone!(@weak chb_44100 => move |c| {
-        {
-            let rates = &mut conf().lock().unwrap().properties.allowed_rates;
-            if c.is_active() {
-                rates.insert(44100);
-            } else {
-                rates.remove(&44100);
-            }
-        }
-        set_rates();
-    }));
-
-    let chb_48000 = CheckButton::builder()
-        .label("  48000")
-        .active(rates.contains(&48000))
-        .margin_start(20)
-        .build();
-    chb_48000.connect_toggled(clone!(@weak chb_48000 => move |c| {
-        {
-            let rates = &mut conf().lock().unwrap().properties.allowed_rates;
-            if c.is_active() {
-                rates.insert(48000);
-            } else {
-                rates.remove(&48000);
-            }
-        }
-        set_rates();
-    }));
-
-    let chb_88200 = CheckButton::builder()
-        .label("  88200")
-        .active(rates.contains(&88200))
-        .margin_start(20)
-        .build();
-    chb_88200.connect_toggled(clone!(@weak chb_88200 => move |c| {
-        {
-            let rates = &mut conf().lock().unwrap().properties.allowed_rates;
-            if c.is_active() {
-                rates.insert(88200);
-            } else {
-                rates.remove(&88200);
-            }
-        }
-        set_rates();
-    }));
-
-    let chb_96000 = CheckButton::builder()
-        .label("  96000")
-        .active(rates.contains(&96000))
-        .margin_start(20)
-        .build();
-    chb_96000.connect_toggled(clone!(@weak chb_96000 => move |c| {
-        {
-            let rates = &mut conf().lock().unwrap().properties.allowed_rates;
-            if c.is_active() {
-                rates.insert(96000);
-            } else {
-                rates.remove(&96000);
-            }
-        }
-        set_rates();
-    }));
-
-    let chb_192000 = CheckButton::builder()
-        .label(" 192000")
-        .active(rates.contains(&192000))
-        .margin_start(20)
-        .build();
-    chb_192000.connect_toggled(clone!(@weak chb_192000 => move |c| {
-        {
-            let rates = &mut conf().lock().unwrap().properties.allowed_rates;
-            if c.is_active() {
-                rates.insert(192000);
-            } else {
-                rates.remove(&192000);
-            }
-        }
-        set_rates();
-    }));
-
     container.append(&lbl_rates);
-    container.append(&chb_44100);
-    container.append(&chb_48000);
-    container.append(&chb_88200);
-    container.append(&chb_96000);
-    container.append(&chb_192000);
+
+    for rate in RATES {
+        let margin = if *rate < 100000 {
+            "    ".to_owned()
+        } else {
+            "  ".to_owned()
+        };
+        let chb = CheckButton::builder()
+            .label(&(margin + &rate.to_string()))
+            .active(rates.contains(rate))
+            .margin_start(20)
+            .build();
+        chb.connect_toggled(clone!(@weak chb => move |c| {
+            {
+                let rates = &mut conf().lock().unwrap().properties.allowed_rates;
+                if c.is_active() {
+                    rates.insert(*rate);
+                } else {
+                    rates.remove(rate);
+                }
+            }
+            set_rates();
+        }));
+        container.append(&chb);
+    }
 
     let lbl_mix = Label::builder()
         .label("Surround")
