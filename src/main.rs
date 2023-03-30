@@ -7,9 +7,10 @@ use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use std::{env, fs};
 
+use gtk::ffi::GTK_INVALID_LIST_POSITION;
 use gtk::glib::clone;
 use gtk::prelude::*;
-use gtk::{Align, Application, ApplicationWindow, Button, CheckButton, ComboBoxText, Label};
+use gtk::{Align, Application, ApplicationWindow, Button, CheckButton, DropDown, Label};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
@@ -18,22 +19,22 @@ static SERVER_PATH: &str = "/pipewire.conf.d";
 static PULSE_PATH: &str = "/pipewire-pulse.conf.d";
 static PATH: OnceCell<String> = OnceCell::new();
 
-const DEFAULT_RATE: u32 = 48000;
-static RATES: &[u32] = &[44100, 48000, 88200, 96000, 192000];
+const DEFAULT_RATE: &str = "48000";
+static RATES: &[&str] = &["44100", "48000", "88200", "96000", "192000"];
 
 #[derive(Serialize, Deserialize, Debug)]
 struct PwContextProperties {
     #[serde(rename = "default.clock.rate")]
-    rate: u32,
+    rate: String,
     #[serde(rename = "default.clock.allowed-rates")]
-    allowed_rates: BTreeSet<u32>,
+    allowed_rates: BTreeSet<String>,
 }
 
 impl Default for PwContextProperties {
     fn default() -> Self {
         Self {
-            rate: DEFAULT_RATE,
-            allowed_rates: BTreeSet::from_iter(vec![DEFAULT_RATE].into_iter()),
+            rate: DEFAULT_RATE.to_owned(),
+            allowed_rates: BTreeSet::from_iter(vec![DEFAULT_RATE.to_owned()].into_iter()),
         }
     }
 }
@@ -133,31 +134,36 @@ fn build_ui(application: &Application) {
 
     cnt_rate.append(&lbl_rate);
 
-    let cmb_rate = ComboBoxText::builder()
+    let dd_rate = DropDown::builder()
         .margin_top(10)
         .margin_bottom(10)
         .margin_start(10)
         .margin_end(10)
         .halign(Align::Center)
         .valign(Align::Center)
+        .model(&gtk::StringList::new(RATES))
         .build();
 
-    for rate in RATES {
-        cmb_rate.append(Some(&rate.to_string()), &rate.to_string());
+    {
+        let active_rate = &conf().lock().unwrap().properties.rate;
+        for (i, rate) in RATES.iter().enumerate() {
+            if rate == active_rate {
+                dd_rate.set_selected(i as u32);
+                break;
+            }
+        }
     }
 
-    cmb_rate.set_active_id(Some(&conf().lock().unwrap().properties.rate.to_string()));
-
-    cmb_rate.connect_changed(clone!(@weak cmb_rate => move |c| {
-        if let Some(rate) = c.active_text() {
-            if let Ok(rate) = rate.to_string().parse::<u32>() {
-                conf().lock().unwrap().properties.rate = rate;
-                set_rate();
-            }
+    dd_rate.connect_selected_notify(clone!(@weak dd_rate => move |dd| {
+        let selected = dd.selected();
+        if selected != GTK_INVALID_LIST_POSITION {
+            let rate = RATES[selected as usize].to_string();
+            conf().lock().unwrap().properties.rate = rate;
+            set_rate();
         }
     }));
 
-    cnt_rate.append(&cmb_rate);
+    cnt_rate.append(&dd_rate);
 
     let btn_save = Button::builder()
         .label("Save Config")
@@ -191,23 +197,20 @@ fn build_ui(application: &Application) {
     container.append(&lbl_rates);
 
     for rate in RATES {
-        let margin = if *rate < 100000 {
-            "    ".to_owned()
-        } else {
-            "  ".to_owned()
-        };
+        let margin = if rate.len() < 6 { "    " } else { "  " }.to_owned();
         let chb = CheckButton::builder()
-            .label(&(margin + &rate.to_string()))
-            .active(rates.contains(rate))
+            .label(&(margin + rate))
+            .active(rates.contains(*rate))
             .margin_start(20)
             .build();
         chb.connect_toggled(clone!(@weak chb => move |c| {
             {
                 let rates = &mut conf().lock().unwrap().properties.allowed_rates;
+                let rate = rate.to_string();
                 if c.is_active() {
-                    rates.insert(*rate);
+                    rates.insert(rate);
                 } else {
-                    rates.remove(rate);
+                    rates.remove(&rate);
                 }
             }
             set_rates();
@@ -321,9 +324,9 @@ fn build_ui(application: &Application) {
 }
 
 fn set_rate() {
-    let rate = conf().lock().unwrap().properties.rate;
-    pw_metadata("clock.rate", rate.to_string());
-    pw_metadata("clock.force-rate", rate.to_string());
+    let rate = &conf().lock().unwrap().properties.rate;
+    pw_metadata("clock.rate", rate);
+    pw_metadata("clock.force-rate", rate);
     pw_metadata("-d", "clock.force-rate");
 }
 
