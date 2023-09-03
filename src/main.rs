@@ -34,7 +34,7 @@ impl Default for PwContextProperties {
     fn default() -> Self {
         Self {
             rate: DEFAULT_RATE.to_owned(),
-            allowed_rates: BTreeSet::from_iter(vec![DEFAULT_RATE.to_owned()].into_iter()),
+            allowed_rates: BTreeSet::from_iter(vec![DEFAULT_RATE.to_owned()]),
         }
     }
 }
