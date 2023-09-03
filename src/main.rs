@@ -60,7 +60,7 @@ impl Default for PwClientStreamProperties {
         Self {
             mix_lfe: false,
             upmix: true,
-            upmix_method: "psd".to_owned(),
+            upmix_method: "none".to_owned(),
         }
     }
 }
