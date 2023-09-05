@@ -8,7 +8,6 @@ use std::sync::Mutex;
 use std::{env, fs};
 
 use gtk::ffi::GTK_INVALID_LIST_POSITION;
-use gtk::glib::clone;
 use gtk::prelude::*;
 use gtk::{Align, Application, ApplicationWindow, Button, CheckButton, DropDown, Label};
 use once_cell::sync::OnceCell;
@@ -154,14 +153,14 @@ fn build_ui(application: &Application) {
         }
     }
 
-    dd_rate.connect_selected_notify(clone!(@weak dd_rate => move |dd| {
-        let selected = dd.selected();
+    dd_rate.connect_selected_notify(move |dd_rate| {
+        let selected = dd_rate.selected();
         if selected != GTK_INVALID_LIST_POSITION {
             let rate = RATES[selected as usize].to_string();
             conf().lock().unwrap().properties.rate = rate;
             set_rate();
         }
-    }));
+    });
 
     cnt_rate.append(&dd_rate);
 
@@ -203,18 +202,18 @@ fn build_ui(application: &Application) {
             .active(rates.contains(*rate))
             .margin_start(20)
             .build();
-        chb.connect_toggled(clone!(@weak chb => move |c| {
+        chb.connect_toggled(move |chb| {
             {
                 let rates = &mut conf().lock().unwrap().properties.allowed_rates;
                 let rate = rate.to_string();
-                if c.is_active() {
+                if chb.is_active() {
                     rates.insert(rate);
                 } else {
                     rates.remove(&rate);
                 }
             }
             set_rates();
-        }));
+        });
         container.append(&chb);
     }
 
@@ -261,8 +260,8 @@ fn build_ui(application: &Application) {
     chb_mix_simple.set_group(Some(&chb_mix_none));
     chb_mix_psd.set_group(Some(&chb_mix_none));
 
-    chb_mix_none.connect_toggled(clone!(@weak chb_mix_none => move |c| {
-        if c.is_active() {
+    chb_mix_none.connect_toggled(move |chb_mix_none| {
+        if chb_mix_none.is_active() {
             {
                 let client_properties = &mut client_conf().lock().unwrap().properties;
                 client_properties.upmix_method = "none".to_owned();
@@ -271,10 +270,10 @@ fn build_ui(application: &Application) {
             let _ = save_client_config();
             restart_pulse();
         }
-    }));
+    });
 
-    chb_mix_simple.connect_toggled(clone!(@weak chb_mix_none => move |c| {
-        if c.is_active() {
+    chb_mix_simple.connect_toggled(move |chb_mix_simple| {
+        if chb_mix_simple.is_active() {
             {
                 let client_properties = &mut client_conf().lock().unwrap().properties;
                 client_properties.upmix_method = "simple".to_owned();
@@ -283,10 +282,10 @@ fn build_ui(application: &Application) {
             let _ = save_client_config();
             restart_pulse();
         }
-    }));
+    });
 
-    chb_mix_psd.connect_toggled(clone!(@weak chb_mix_none => move |c| {
-        if c.is_active() {
+    chb_mix_psd.connect_toggled(move |chb_mix_psd| {
+        if chb_mix_psd.is_active() {
             {
                 let client_properties = &mut client_conf().lock().unwrap().properties;
                 client_properties.upmix_method = "psd".to_owned();
@@ -295,7 +294,7 @@ fn build_ui(application: &Application) {
             let _ = save_client_config();
             restart_pulse();
         }
-    }));
+    });
 
     cnt_mix.append(&chb_mix_none);
     cnt_mix.append(&chb_mix_simple);
@@ -308,13 +307,13 @@ fn build_ui(application: &Application) {
         .active(client_properties.mix_lfe)
         .margin_start(20)
         .build();
-    chb_mix_lfe.connect_toggled(clone!(@weak chb_mix_lfe => move |c| {
+    chb_mix_lfe.connect_toggled(move |chb_mix_lfe| {
         {
-            client_conf().lock().unwrap().properties.mix_lfe = c.is_active();
+            client_conf().lock().unwrap().properties.mix_lfe = chb_mix_lfe.is_active();
         }
         let _ = save_client_config();
         restart_pulse();
-    }));
+    });
 
     container.append(&chb_mix_lfe);
 
