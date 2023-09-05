@@ -5,18 +5,18 @@ use std::io::Write;
 use std::ops::Deref;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
+use std::sync::OnceLock;
 use std::{env, fs};
 
 use gtk::ffi::GTK_INVALID_LIST_POSITION;
 use gtk::prelude::*;
 use gtk::{Align, Application, ApplicationWindow, Button, CheckButton, DropDown, Label};
-use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 
 static FILE: &str = "/pwrate.conf";
 static SERVER_PATH: &str = "/pipewire.conf.d";
 static PULSE_PATH: &str = "/pipewire-pulse.conf.d";
-static PATH: OnceCell<String> = OnceCell::new();
+static PATH: OnceLock<String> = OnceLock::new();
 
 const DEFAULT_RATE: &str = "48000";
 static RATES: &[&str] = &["44100", "48000", "88200", "96000", "192000"];
@@ -71,11 +71,11 @@ struct PwClientConfig {
 }
 
 fn conf() -> &'static Mutex<PwConfig> {
-    static INSTANCE: OnceCell<Mutex<PwConfig>> = OnceCell::new();
+    static INSTANCE: OnceLock<Mutex<PwConfig>> = OnceLock::new();
     INSTANCE.get_or_init(|| Mutex::new(Default::default()))
 }
 fn client_conf() -> &'static Mutex<PwClientConfig> {
-    static INSTANCE: OnceCell<Mutex<PwClientConfig>> = OnceCell::new();
+    static INSTANCE: OnceLock<Mutex<PwClientConfig>> = OnceLock::new();
     INSTANCE.get_or_init(|| Mutex::new(Default::default()))
 }
 
