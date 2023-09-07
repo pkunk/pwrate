@@ -249,15 +249,13 @@ fn build_ui(application: &Application) {
         .active(client_properties.upmix_method == "simple")
         .margin_start(10)
         .build();
+    chb_mix_simple.set_group(Some(&chb_mix_none));
 
     let chb_mix_psd = CheckButton::builder()
         .label("PSD")
         .active(client_properties.upmix_method == "psd")
         .margin_start(10)
         .build();
-
-    chb_mix_none.set_group(Some(&chb_mix_none));
-    chb_mix_simple.set_group(Some(&chb_mix_none));
     chb_mix_psd.set_group(Some(&chb_mix_none));
 
     chb_mix_none.connect_toggled(move |chb_mix_none| {
