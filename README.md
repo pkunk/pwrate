@@ -13,4 +13,4 @@ Make sure that `git` and `rust` are installed.
 - `cd pwrate`
 - `cargo run pwrate`
 
-For ArchLinux `PKGBUILD` in `dist/` can be used.
+For ArchLinux `PKGBUILD` from `dist/` can be used.
