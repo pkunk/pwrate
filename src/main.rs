@@ -365,10 +365,6 @@ fn save_client_config() -> Result<(), Box<dyn std::error::Error>> {
     let mut file = File::create(path.to_owned() + "/client.conf.d" + FILE)?;
     file.write_all(&serde_json::to_vec_pretty(client_conf().lock()?.deref())?)?;
 
-    fs::create_dir_all(path.to_owned() + "/client-rt.conf.d")?;
-    let mut file = File::create(path.to_owned() + "/client-rt.conf.d" + FILE)?;
-    file.write_all(&serde_json::to_vec_pretty(client_conf().lock()?.deref())?)?;
-
     Ok(())
 }
 
