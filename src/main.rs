@@ -48,6 +48,11 @@ struct PwConfig {
 struct PwClientStreamProperties {
     #[serde(rename = "channelmix.mix-lfe")]
     mix_lfe: bool,
+    #[serde(
+        rename = "channelmix.lfe-cutoff",
+        skip_serializing_if = "Option::is_none"
+    )]
+    lfe_cutoff: Option<u32>,
     #[serde(rename = "channelmix.upmix")]
     upmix: bool,
     #[serde(rename = "channelmix.upmix-method")]
@@ -58,6 +63,7 @@ impl Default for PwClientStreamProperties {
     fn default() -> Self {
         Self {
             mix_lfe: false,
+            lfe_cutoff: None,
             upmix: true,
             upmix_method: "none".to_owned(),
         }
@@ -263,7 +269,7 @@ fn build_ui(application: &Application) {
             {
                 let client_properties = &mut client_conf().lock().unwrap().properties;
                 client_properties.upmix_method = "none".to_owned();
-                client_properties.upmix = false;
+                client_properties.upmix = client_properties.mix_lfe;
             }
             let _ = save_client_config();
             restart_pulse();
@@ -307,7 +313,15 @@ fn build_ui(application: &Application) {
         .build();
     chb_mix_lfe.connect_toggled(move |chb_mix_lfe| {
         {
-            client_conf().lock().unwrap().properties.mix_lfe = chb_mix_lfe.is_active();
+            let client_properties = &mut client_conf().lock().unwrap().properties;
+            client_properties.mix_lfe = chb_mix_lfe.is_active();
+            client_properties.lfe_cutoff = if client_properties.mix_lfe {
+                Some(150)
+            } else {
+                None
+            };
+            client_properties.upmix =
+                client_properties.mix_lfe || client_properties.upmix_method != "none";
         }
         let _ = save_client_config();
         restart_pulse();
