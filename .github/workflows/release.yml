@@ -1,0 +1,28 @@
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: release ${{ matrix.target }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libgtk-4-dev libpipewire-0.3-dev
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Create Artifact
+        run: |
+          cargo build --release --locked
+          cp target/release/pwrate ./
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -fsSL https://github.com/github/hub/raw/master/script/get | bash -s 2.14.2
+          bin/hub release edit -a pwrate -m ${GITHUB_REF#refs/tags/} ${GITHUB_REF#refs/tags/}
