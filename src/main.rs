@@ -268,7 +268,7 @@ fn build_ui(application: &Application) {
         if chb_mix_none.is_active() {
             {
                 let client_properties = &mut client_conf().lock().unwrap().properties;
-                client_properties.upmix_method = "none".to_owned();
+                "none".clone_into(&mut client_properties.upmix_method);
                 client_properties.upmix = client_properties.mix_lfe;
             }
             let _ = save_client_config();
@@ -280,7 +280,7 @@ fn build_ui(application: &Application) {
         if chb_mix_simple.is_active() {
             {
                 let client_properties = &mut client_conf().lock().unwrap().properties;
-                client_properties.upmix_method = "simple".to_owned();
+                "simple".clone_into(&mut client_properties.upmix_method);
                 client_properties.upmix = true;
             }
             let _ = save_client_config();
@@ -292,7 +292,7 @@ fn build_ui(application: &Application) {
         if chb_mix_psd.is_active() {
             {
                 let client_properties = &mut client_conf().lock().unwrap().properties;
-                client_properties.upmix_method = "psd".to_owned();
+                "psd".clone_into(&mut client_properties.upmix_method);
                 client_properties.upmix = true;
             }
             let _ = save_client_config();
