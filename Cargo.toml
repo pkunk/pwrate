@@ -1,9 +1,9 @@
 [package]
 name = "pwrate"
-version = "1.7.0"
+version = "1.7.1"
 authors = ["Alex B <pkunk.ab@gmail.com>"]
 edition = "2021"
-rust-version = "1.72"
+rust-version = "1.72.1"
 license = "GPL-3.0-only"
 keywords = ["pipewire", "gtk", "gui", "utility"]
 categories = ["gui", "multimedia"]
@@ -14,7 +14,6 @@ categories = ["gui", "multimedia"]
 lto = true
 
 [dependencies]
-glib = { version = "0.19" }
-gtk = { version = "0.8", package = "gtk4" }
+gtk = { version = "0.9", package = "gtk4" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
